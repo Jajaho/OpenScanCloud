@@ -1,4 +1,5 @@
 import tkinter
+import tkinter.ttk as ttk
 import os
 import requests
 import time
@@ -233,31 +234,35 @@ active_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
 window = tkinter.Tk()
 window.title('OpenScan Desktop Uploader')
 window.geometry('500x220')
-window.resizable(0,0)
+window.resizable(False,False)
 window.grid_columnconfigure((0, 1), weight=1)
 window.grid_rowconfigure((0, 1, 2, 4, 5), weight=1,minsize=30)
+
+# Configure TTK styling
+style = ttk.Style()
+
 
 statustext = tkinter.StringVar()
 folderpath = tkinter.StringVar()
 token = tkinter.StringVar()
 
+# Using TTK widgets for modern appearance
+title = ttk.Label(window, text="--OpenScan Uploader --", font=('Helvetica', 18, 'bold'))
+status = ttk.Label(window, textvariable=statustext)
+naviUpload = ttk.Button(text="UPLOAD", command=page1)
+naviSettings = ttk.Button(text="SETTINGS", command=page2)
 
-title = tkinter.Label(window, text="--OpenScan Uploader --", font='Helvetica 18 bold')
-status = tkinter.Label(window, textvariable=statustext)
-naviUpload = tkinter.Button(text="UPLOAD", command=page1, cursor="hand2")
-naviSettings = tkinter.Button(text="SETTINGS", command=page2, cursor="hand2")
-
-link = tkinter.Button(text="GITHUB", cursor="hand2")
+link = ttk.Button(text="GITHUB")
 link.bind("<Button-1>", lambda e: webbrowser.open_new("https://github.com/OpenScanEu/OpenScanCloud"
                                                       "#current-functionality--desktop-uploader-for-windows--download"))
-donate = tkinter.Button(text="DONATE", cursor="hand2")
+donate = ttk.Button(text="DONATE")
 donate.bind("<Button-1>", lambda e: webbrowser.open_new("https://www.patreon.com/bePatron?u=51974655"))
 
-browse = tkinter.Button(text="Select folder", command=browse_button_bg)
-upload = tkinter.Button(text = 'Upload Photos', command=uploader_bg)
+browse = ttk.Button(text="Select folder", command=browse_button_bg)
+upload = ttk.Button(text='Upload Photos', command=uploader_bg)
 
-enterToken = tkinter.Entry(textvariable=token, justify='center')
-verifyToken = tkinter.Button(text="Verify and Save Token", cursor="hand2", command=verify_bg)
+enterToken = ttk.Entry(textvariable=token, justify='center')
+verifyToken = ttk.Button(text="Verify and Save Token", command=verify_bg)
 
 title.grid(row=0, columnspan=2)
 status.grid(row=1, columnspan=2, sticky="ew")
@@ -265,6 +270,9 @@ donate.grid(row=5, column=1, sticky='ew')
 link.grid(row=5, column=0, sticky='ew')
 upload['state']='disabled'
 
+# Add some padding
+for child in window.winfo_children():
+    child.grid_configure(padx=5, pady=2)
 
 if os.path.isfile(active_directory + '/token.txt'):
     with open(active_directory + '/token.txt', 'r') as file:
