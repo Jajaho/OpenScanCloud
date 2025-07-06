@@ -44,30 +44,30 @@ def browse_button():
     msg['token'] = token.get()
 
 
-def page1():
-    naviUpload.grid_forget()
+def upload_page():
+    naviContinue.grid_forget()
     enterToken.grid_forget()
     verifyToken.grid_forget()
-    browse.grid(row=2, column=0, sticky='e')
-    upload.grid(row=2, column=1, sticky='w')
+    browse.grid(row=3, column=0, sticky='ew')
+    upload.grid(row=3, column=1, sticky='ew')
 
-    naviSettings.grid(row=4, columnspan=2)
+    naviSettings.grid(row=4, column=1, sticky='ew')
     statustext.set('Select the folder containing your photos:')
 
 
-def page2():
+def settings_page():
     browse.grid_forget()
     upload.grid_forget()
     naviSettings.grid_forget()
     enterToken.grid(row=2, columnspan=2)
-    naviUpload.grid(row=4, columnspan=2)
+    naviContinue.grid(row=4, column=1, sticky='ew')
     verifyToken.grid(row=3, columnspan=2)
     if token.get() == '':
         statustext.set('Please enter a valid OpenScanCloud token')
-        naviUpload['state'] = 'disabled'
+        naviContinue['state'] = 'disabled'
     else:
         statustext.set('Your OpenScanCloud token:')
-        naviUpload['state'] = 'active'
+        naviContinue['state'] = 'active'
 
 
 def OpenScanCloud(cmd, msg):
@@ -88,7 +88,7 @@ def verify():
     r = OpenScanCloud('getTokenInfo', msg)
     if r.status_code != 200:
         statustext.set('Could not verify token, please try again:')
-        naviUpload['state'] = 'disabled'
+        naviContinue['state'] = 'disabled'
         verifyToken['state'] = 'active'
         return
     try:
@@ -97,7 +97,7 @@ def verify():
         credit = round(int(r.json()['credit']) / 1000000000, 2)
         filesize = round(int(r.json()['limit_filesize']) / 1000000, 2)
         statustext.set('Token verified and saved.\nYou can upload a total of ' + str(credit) + 'GB\nWith a maximum size of '+str(filesize)+'MB per set')
-        naviUpload['state'] = 'active'
+        naviContinue['state'] = 'active'
     except:
         statustext.set('ERROR: Could not save token.')
     verifyToken['state'] = 'active'
@@ -232,11 +232,11 @@ active_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
 # TKinter Setup
 
 window = tkinter.Tk()
-window.title('OpenScan Desktop Uploader')
-window.geometry('500x220')
+window.title('OpenScan Desktop')
+window.geometry('340x220')
 window.resizable(False,False)
 window.grid_columnconfigure((0, 1), weight=1)
-window.grid_rowconfigure((0, 1, 2, 4, 5), weight=1,minsize=30)
+window.grid_rowconfigure((0, 1, 2, 3, 4), weight=1, minsize=30)
 
 
 icon = tkinter.PhotoImage(file='uploader/window_icon.png')
@@ -244,22 +244,33 @@ window.iconphoto(False, icon)
 
 # Configure TTK styling
 style = ttk.Style()
-
-
 statustext = tkinter.StringVar()
 folderpath = tkinter.StringVar()
 token = tkinter.StringVar()
 
-# Using TTK widgets for modern appearance
-title = ttk.Label(window, text="--OpenScan Uploader --", font=('Helvetica', 18, 'bold'))
 status = ttk.Label(window, textvariable=statustext)
-naviUpload = ttk.Button(text="UPLOAD", command=page1)
-naviSettings = ttk.Button(text="SETTINGS", command=page2)
+# naviContinue = ttk.Button(text="CONTINUE", command=upload_page, width=20)
+# naviSettings = ttk.Button(text="SETTINGS", command=settings_page, width=20)
+naviContinue = ttk.Button(text="CONTINUE", command=upload_page)
+naviSettings = ttk.Button(text="SETTINGS", command=settings_page)
 
-link = ttk.Button(text="GITHUB")
+# Try to load PNG images for buttons, fallback to text if not found
+try:
+    github_img = tkinter.PhotoImage(file='uploader/&&github_logo.png')
+    link = ttk.Button(image=github_img)
+    link.image = github_img  # Keep a reference to prevent garbage collection
+except:
+    link = ttk.Button(text="GITHUB")
+
+try:
+    donate_img = tkinter.PhotoImage(file='uploader/&&patreon_logo.png')
+    donate = ttk.Button(image=donate_img)
+    donate.image = donate_img  # Keep a reference to prevent garbage collection
+except:
+    donate = ttk.Button(text="DONATE")
+
 link.bind("<Button-1>", lambda e: webbrowser.open_new("https://github.com/OpenScanEu/OpenScanCloud"
                                                       "#current-functionality--desktop-uploader-for-windows--download"))
-donate = ttk.Button(text="DONATE")
 donate.bind("<Button-1>", lambda e: webbrowser.open_new("https://www.patreon.com/bePatron?u=51974655"))
 
 browse = ttk.Button(text="Select folder", command=browse_button_bg)
@@ -268,10 +279,14 @@ upload = ttk.Button(text='Upload Photos', command=uploader_bg)
 enterToken = ttk.Entry(textvariable=token, justify='center')
 verifyToken = ttk.Button(text="Verify and Save Token", command=verify_bg)
 
-title.grid(row=0, columnspan=2)
-status.grid(row=1, columnspan=2, sticky="ew")
-donate.grid(row=5, column=1, sticky='ew')
-link.grid(row=5, column=0, sticky='ew')
+# Grid layout - moved text up to row 0 and 1
+status.grid(row=0, columnspan=2, sticky="ew")
+
+# Bottom row layout: GitHub and Donate in lower left, Settings in lower right
+link.grid(row=4, column=0, sticky='w')
+donate.grid(row=4, column=0, sticky='e')
+# Note: naviSettings is positioned in page1() and page2() functions
+
 upload['state']='disabled'
 
 # Add some padding
@@ -281,11 +296,11 @@ for child in window.winfo_children():
 if os.path.isfile(active_directory + '/token.txt'):
     with open(active_directory + '/token.txt', 'r') as file:
         token.set(file.read())
-    page1()
+    upload_page()
 else:
     token.set('')
     statustext.set('Please go to SETTINGS and enter a valid token')
-    page2()
+    settings_page()
 
 window.mainloop()
 
