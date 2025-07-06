@@ -238,6 +238,10 @@ window.resizable(False,False)
 window.grid_columnconfigure((0, 1), weight=1)
 window.grid_rowconfigure((0, 1, 2, 4, 5), weight=1,minsize=30)
 
+
+icon = tkinter.PhotoImage(file='uploader/window_icon.png')
+window.iconphoto(False, icon) 
+
 # Configure TTK styling
 style = ttk.Style()
 
