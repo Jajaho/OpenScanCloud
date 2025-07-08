@@ -45,23 +45,30 @@ def browse_button():
 
 
 def upload_page():
-    naviContinue.grid_forget()
-    enterToken.grid_forget()
-    verifyToken.grid_forget()
+    # Hide settings page elements
+    naviContinue.grid_remove()
+    enterToken.grid_remove()
+    verifyToken.grid_remove()
+    
+    # Show upload page elements
     browse.grid(row=3, column=0, sticky='ew')
     upload.grid(row=3, column=1, sticky='ew')
-
     naviSettings.grid(row=4, column=1, sticky='ew')
+    
     statustext.set('Select the folder containing your photos:')
 
 
 def settings_page():
-    browse.grid_forget()
-    upload.grid_forget()
-    naviSettings.grid_forget()
-    enterToken.grid(row=2, columnspan=2)
+    # Hide upload page elements
+    browse.grid_remove()
+    upload.grid_remove()
+    naviSettings.grid_remove()
+    
+    # Show settings page elements
+    enterToken.grid(row=2, columnspan=2, sticky='ew')
+    verifyToken.grid(row=3, columnspan=2, sticky='ew')
     naviContinue.grid(row=4, column=1, sticky='ew')
-    verifyToken.grid(row=3, columnspan=2)
+    
     if token.get() == '':
         statustext.set('Please enter a valid OpenScanCloud token')
         naviContinue['state'] = 'disabled'
@@ -239,8 +246,11 @@ window.grid_columnconfigure((0, 1), weight=1)
 window.grid_rowconfigure((0, 1, 2, 3, 4), weight=1, minsize=30)
 
 
-icon = tkinter.PhotoImage(file='uploader/window_icon.png')
-window.iconphoto(False, icon) 
+try:
+    icon = tkinter.PhotoImage(file='uploader/window_icon.png')
+    window.iconphoto(False, icon) 
+except:
+    pass  # Icon file not found, continue without icon
 
 # Configure TTK styling
 style = ttk.Style()
@@ -248,9 +258,8 @@ statustext = tkinter.StringVar()
 folderpath = tkinter.StringVar()
 token = tkinter.StringVar()
 
+# Create all widgets
 status = ttk.Label(window, textvariable=statustext)
-# naviContinue = ttk.Button(text="CONTINUE", command=upload_page, width=20)
-# naviSettings = ttk.Button(text="SETTINGS", command=settings_page, width=20)
 naviContinue = ttk.Button(text="CONTINUE", command=upload_page)
 naviSettings = ttk.Button(text="SETTINGS", command=settings_page)
 
@@ -279,20 +288,21 @@ upload = ttk.Button(text='Upload Photos', command=uploader_bg)
 enterToken = ttk.Entry(textvariable=token, justify='center')
 verifyToken = ttk.Button(text="Verify and Save Token", command=verify_bg)
 
-# Grid layout - moved text up to row 0 and 1
+# grid layout
 status.grid(row=0, columnspan=2, sticky="ew")
 
-# Bottom row layout: GitHub and Donate in lower left, Settings in lower right
+# GitHub and Donate buttons in bottom stay constant. 
 link.grid(row=4, column=0, sticky='w')
 donate.grid(row=4, column=0, sticky='e')
-# Note: naviSettings is positioned in page1() and page2() functions
 
+# Initialize upload button state
 upload['state']='disabled'
 
 # Add some padding
 for child in window.winfo_children():
     child.grid_configure(padx=5, pady=2)
 
+# Initialize the appropriate page
 if os.path.isfile(active_directory + '/token.txt'):
     with open(active_directory + '/token.txt', 'r') as file:
         token.set(file.read())
