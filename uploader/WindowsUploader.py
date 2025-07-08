@@ -10,14 +10,25 @@ import webbrowser
 import threading
 from sys import exit
 
+# Import tkinterdnd2 for drag and drop functionality
+try:
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+    DND_AVAILABLE = True
+except ImportError:
+    print("tkinterdnd2 not installed. Install with: pip install tkinterdnd2")
+    DND_AVAILABLE = False
+
 def browse_button_bg():
     threading.Thread(target=browse_button).start()
-
 
 def browse_button():
     folder = filedialog.askdirectory()
     if folder == '':
         return
+    process_folder(folder)
+
+def process_folder(folder):
+    """Process a folder and update the UI accordingly"""
     folderpath.set(folder)
     statustext.set('Selected ' + folder)
     list = []
@@ -28,6 +39,7 @@ def browse_button():
     if len(list) == 0:
         statustext.set('No images found, allowed formats:'+ str(allowed_extensions))
         upload['state'] = 'disabled'
+        drag_drop_area.update_status("No images found in this folder")
         return
 
     filesize = 0
@@ -37,12 +49,183 @@ def browse_button():
     statustext.set('Selected: ' + folder + '\nFound ' + str(len(list)) + ' photos with total filesize of ' +
                    str(int(filesize/1000000)) + 'MB')
     upload['state']='active'
+    drag_drop_area.update_status(f"✓ Ready: {len(list)} photos ({int(filesize/1000000)}MB)")
+    
     msg['filesize'] = filesize
     msg['folder'] = folder + '/'
     msg['filelist'] = list
     msg['photos'] = len(list)
     msg['token'] = token.get()
 
+class DragDropFrame(ttk.Frame):
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, **kwargs)
+        
+        # Configure TTK style for drag and drop area
+        style = ttk.Style()
+        
+        # Create custom styles for the drag and drop area
+        style.configure('DragDrop.TFrame', 
+                    #    relief='sunken', 
+                       borderwidth=2,
+                       background='#f8f9fa')
+        
+        style.configure('DragDrop.TLabel', 
+                       background='#f8f9fa',
+                       foreground='#495057',
+                       font=('Arial', 10),
+                       anchor='center')
+        
+        style.configure('DragDropStatus.TLabel',
+                       background='#f8f9fa',
+                       foreground='#6c757d',
+                       font=('Arial', 8),
+                       anchor='center')
+        
+        # Hover styles
+        style.configure('DragDropHover.TFrame',
+                    #    relief='sunken',
+                       borderwidth=2,
+                       background="#bbbbbb")
+        
+        style.configure('DragDropHover.TLabel',
+                       background="#bbbbbb",
+                       foreground='#0d6efd',
+                       font=('Arial', 10),
+                       anchor='center')
+        
+        style.configure('DragDropStatusHover.TLabel',
+                       background="#bbbbbb",
+                       foreground='#0d6efd',
+                       font=('Arial', 8),
+                       anchor='center')
+        
+        # Drag enter styles
+        style.configure('DragDropActive.TFrame',
+                    #    relief='sunken',
+                       borderwidth=2,
+                       background='#cfe2ff')
+        
+        style.configure('DragDropActive.TLabel',
+                       background='#cfe2ff',
+                       foreground='#0d6efd',
+                       font=('Arial', 10),
+                       anchor='center')
+        
+        style.configure('DragDropStatusActive.TLabel',
+                       background='#cfe2ff',
+                       foreground='#0d6efd',
+                       font=('Arial', 8),
+                       anchor='center')
+        
+        # Configure this frame with the custom style
+        self.configure(style='DragDrop.TFrame')
+        
+        # Create main label using TTK
+        self.label = ttk.Label(self, 
+                              text="📁 Drag and drop a folder here\nor click to browse",
+                              style='DragDrop.TLabel')
+        self.label.pack(expand=True, fill='both', pady=15)
+        
+        # Create status label using TTK
+        self.status_label = ttk.Label(self,
+                                     text="Select a folder containing images",
+                                     style='DragDropStatus.TLabel')
+        self.status_label.pack(side='bottom', pady=5)
+        
+        # Set up drag and drop if available
+        try:
+            from tkinterdnd2 import DND_FILES
+            self.drop_target_register(DND_FILES)
+            self.dnd_bind('<<Drop>>', self.on_drop)
+            self.dnd_bind('<<DragEnter>>', self.on_drag_enter)
+            self.dnd_bind('<<DragLeave>>', self.on_drag_leave)
+            self.dnd_available = True
+        except ImportError:
+            self.dnd_available = False
+        
+        # Bind click event for browsing
+        self.bind('<Button-1>', self.on_click)
+        self.label.bind('<Button-1>', self.on_click)
+        self.status_label.bind('<Button-1>', self.on_click)
+        
+        # Bind hover events for visual feedback
+        self.bind('<Enter>', self.on_enter)
+        self.bind('<Leave>', self.on_leave)
+        self.label.bind('<Enter>', self.on_enter)
+        self.label.bind('<Leave>', self.on_leave)
+        self.status_label.bind('<Enter>', self.on_enter)
+        self.status_label.bind('<Leave>', self.on_leave)
+        
+        # Set cursor
+        self.configure(cursor='hand2')
+        
+    def on_click(self, event):
+        """Handle click event to browse for folder"""
+        # Call your browse function here
+        browse_button_bg()
+        
+    def on_enter(self, event):
+        """Handle mouse enter event"""
+        self.configure(style='DragDropHover.TFrame')
+        self.label.configure(style='DragDropHover.TLabel')
+        self.status_label.configure(style='DragDropStatusHover.TLabel')
+        
+    def on_leave(self, event):
+        """Handle mouse leave event"""
+        self.configure(style='DragDrop.TFrame')
+        self.label.configure(style='DragDrop.TLabel')
+        self.status_label.configure(style='DragDropStatus.TLabel')
+        
+    def on_drag_enter(self, event):
+        """Handle drag enter event"""
+        self.configure(style='DragDropActive.TFrame')
+        self.label.configure(style='DragDropActive.TLabel', text="📁 Drop folder here")
+        self.status_label.configure(style='DragDropStatusActive.TLabel')
+        
+    def on_drag_leave(self, event):
+        """Handle drag leave event"""
+        self.configure(style='DragDrop.TFrame')
+        self.label.configure(style='DragDrop.TLabel', text="📁 Drag and drop a folder here\nor click to browse")
+        self.status_label.configure(style='DragDropStatus.TLabel')
+        
+    def on_drop(self, event):
+        """Handle drop event"""
+        # Reset appearance
+        self.configure(style='DragDrop.TFrame')
+        self.label.configure(style='DragDrop.TLabel', text="📁 Drag and drop a folder here\nor click to browse")
+        self.status_label.configure(style='DragDropStatus.TLabel')
+        
+        # Get dropped files/folders
+        files = event.data
+        if files:
+            # Handle different data formats
+            if isinstance(files, str):
+                # Single file/folder path
+                path = files.strip('{}')  # Remove braces if present
+            elif isinstance(files, (list, tuple)):
+                # Multiple files - use the first one
+                path = files[0].strip('{}')
+            else:
+                return
+                
+            # Process the path
+            if os.path.exists(path):
+                if os.path.isdir(path):
+                    # It's a directory
+                    self.update_status("Processing folder...")
+                    threading.Thread(target=lambda: process_folder(path)).start()
+                else:
+                    # It's a file, use its parent directory
+                    parent_dir = os.path.dirname(path)
+                    self.update_status("Processing parent folder...")
+                    threading.Thread(target=lambda: process_folder(parent_dir)).start()
+            else:
+                self.update_status("Invalid path dropped")
+                
+    def update_status(self, message):
+        """Update the status label"""
+        self.status_label.configure(text=message)
 
 def upload_page():
     # Hide settings page elements
@@ -51,23 +234,24 @@ def upload_page():
     verifyToken.grid_remove()
     
     # Show upload page elements
-    browse.grid(row=3, column=0, sticky='ew')
-    upload.grid(row=3, column=1, sticky='ew')
-    naviSettings.grid(row=4, column=1, sticky='ew')
+    drag_drop_area.grid(row=1, columnspan=2, sticky='ew', pady=10, ipady=20)
+    browse.grid(row=2, column=0, sticky='ew')
+    upload.grid(row=2, column=1, sticky='ew')
+    naviSettings.grid(row=3, column=1, sticky='ew')
     
     statustext.set('Select the folder containing your photos:')
 
-
 def settings_page():
     # Hide upload page elements
+    drag_drop_area.grid_remove()
     browse.grid_remove()
     upload.grid_remove()
     naviSettings.grid_remove()
     
     # Show settings page elements
-    enterToken.grid(row=2, columnspan=2, sticky='ew')
-    verifyToken.grid(row=3, columnspan=2, sticky='ew')
-    naviContinue.grid(row=4, column=1, sticky='ew')
+    enterToken.grid(row=1, columnspan=2, sticky='ew')
+    verifyToken.grid(row=2, columnspan=2, sticky='ew')
+    naviContinue.grid(row=3, column=1, sticky='ew')
     
     if token.get() == '':
         statustext.set('Please enter a valid OpenScanCloud token')
@@ -75,7 +259,6 @@ def settings_page():
     else:
         statustext.set('Your OpenScanCloud token:')
         naviContinue['state'] = 'active'
-
 
 def OpenScanCloud(cmd, msg):
     r = requests.get(server + cmd, auth=(user, pw), params=msg)
@@ -109,13 +292,13 @@ def verify():
         statustext.set('ERROR: Could not save token.')
     verifyToken['state'] = 'active'
 
-
 def uploader_bg():
     threading.Thread(target=uploader).start()
 
 def uploader():
     upload['state'] = 'disabled'
     browse['state'] = 'disabled'
+    drag_drop_area.update_status("Upload in progress...")
 
     statustext.set('Preparing upload ...')
     r = OpenScanCloud('getTokenInfo', msg)
@@ -123,7 +306,7 @@ def uploader():
         statustext.set('Connection failed')
         upload['state'] = 'active'
         browse['state'] = 'active'
-
+        drag_drop_area.update_status("Connection failed")
         return
 
     msg2 = r.json()
@@ -132,26 +315,29 @@ def uploader():
         statustext.set('Not enough credit, please contact cloud@openscan.eu')
         upload['state'] = 'active'
         browse['state'] = 'active'
+        drag_drop_area.update_status("Not enough credit")
         return
 
     if msg['filesize'] > msg2['limit_filesize']:
         statustext.set('Filesize limit exceeded')
         upload['state'] = 'active'
         browse['state'] = 'active'
+        drag_drop_area.update_status("Filesize limit exceeded")
         return
 
     zipAndSplit()
     uploadAndStart()
     browse['state'] = 'active'
+    drag_drop_area.update_status("Upload complete!")
 
 def zipAndSplit():
     statustext.set('Creating zip ...')
+    drag_drop_area.update_status("Creating zip archive...")
 
     dir_tmp = active_directory + '/tmp/'
 
     if not os.path.isdir(dir_tmp):
         os.mkdir(dir_tmp)
-
 
     for i in os.listdir(dir_tmp):
         if os.path.isfile(dir_tmp + i):
@@ -167,7 +353,6 @@ def zipAndSplit():
             zip.write(msg['folder'] + i, i)
 
     msg['filesize'] = os.path.getsize(file)
-
     msg['partslist'] = [file]
 
     if os.path.getsize(file) > size_to_split:
@@ -177,6 +362,7 @@ def zipAndSplit():
             chunk = f.read(size_to_split)
             while chunk:
                 statustext.set('Splitting archive into chunks: ' + str(number))
+                drag_drop_area.update_status(f"Splitting archive: part {number}")
                 with open(file + '_' + str(number), 'wb+') as chunk_file:
                     chunk_file.write(chunk)
                 msg['partslist'].append(file + '_' + str(number))
@@ -185,9 +371,11 @@ def zipAndSplit():
         os.remove(file)
     msg['parts'] = len(msg['partslist'])
     statustext.set('preparing project on the OpenScanCloud server')
+    drag_drop_area.update_status("Preparing project...")
     r = OpenScanCloud('createProject', msg)
     if r.status_code != 200:
         statustext.set('ERROR: Could not create project')
+        drag_drop_area.update_status("ERROR: Could not create project")
         return
     msg['ulink'] = ''
     msg['ulink'] = r.json()['ulink']
@@ -195,6 +383,7 @@ def zipAndSplit():
 def uploadAndStart():
     if msg['ulink'] == '':
         statustext.set('ERROR: Upload not started')
+        drag_drop_area.update_status("ERROR: Upload not started")
         return
     i = 0
 
@@ -203,6 +392,7 @@ def uploadAndStart():
 
     for file in filelist:
         statustext.set('uploading part ' + str(i+1) + ' of ' + str(len(filelist)))
+        drag_drop_area.update_status(f"Uploading part {i+1} of {len(filelist)}")
         link = ulinks[i]
         i = i+1
 
@@ -210,14 +400,18 @@ def uploadAndStart():
         r = requests.post(url=link, data=data, headers={'Content-type': 'application/octet-stream'})
         if r.status_code != 200:
             statustext.set('ERROR: could not upload file' + str(i))
+            drag_drop_area.update_status(f"ERROR: could not upload file {i}")
             return
         os.remove(file)
 
     statustext.set('starting project')
+    drag_drop_area.update_status("Starting project...")
     r = OpenScanCloud('startProject', msg)
     if r.status_code != 200:
         statustext.set('ERROR: could not start processing')
+        drag_drop_area.update_status("ERROR: could not start processing")
     statustext.set('processing started ... you will get an email soon')
+    drag_drop_area.update_status("✓ Processing started!")
     try:
         os.rmdir(active_directory + '/tmp/')
     except:
@@ -236,15 +430,17 @@ msg = {}
 
 active_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
 
-# TKinter Setup
+# TKinter Setup with DnD support
+if DND_AVAILABLE:
+    window = TkinterDnD.Tk()
+else:
+    window = tkinter.Tk()
 
-window = tkinter.Tk()
 window.title('OpenScan Desktop')
-window.geometry('340x220')
+window.geometry('340x280')  # Increased height for drag and drop area
 window.resizable(False,False)
 window.grid_columnconfigure((0, 1), weight=1)
 window.grid_rowconfigure((0, 1, 2, 3, 4), weight=1, minsize=30)
-
 
 try:
     icon = tkinter.PhotoImage(file='uploader/window_icon.png')
@@ -262,6 +458,9 @@ token = tkinter.StringVar()
 status = ttk.Label(window, textvariable=statustext)
 naviContinue = ttk.Button(text="CONTINUE", command=upload_page)
 naviSettings = ttk.Button(text="SETTINGS", command=settings_page)
+
+# Create drag and drop area
+drag_drop_area = DragDropFrame(window, height=80)
 
 # Try to load PNG images for buttons, fallback to text if not found
 try:
@@ -302,6 +501,10 @@ upload['state']='disabled'
 for child in window.winfo_children():
     child.grid_configure(padx=5, pady=2)
 
+# Show warning if DnD is not available
+if not DND_AVAILABLE:
+    statustext.set('Install tkinterdnd2 for full drag & drop support')
+
 # Initialize the appropriate page
 if os.path.isfile(active_directory + '/token.txt'):
     with open(active_directory + '/token.txt', 'r') as file:
@@ -313,5 +516,4 @@ else:
     settings_page()
 
 window.mainloop()
-
 exit()
