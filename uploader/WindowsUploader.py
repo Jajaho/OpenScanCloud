@@ -239,7 +239,7 @@ active_directory = os.path.dirname(os.path.realpath(sys.argv[0]))
 # TKinter Setup
 
 window = tkinter.Tk()
-window.title('OpenScan Desktop')
+window.title('OpenScan Cloud Uploader')
 window.geometry('340x220')
 window.resizable(False,False)
 window.grid_columnconfigure((0, 1), weight=1)
